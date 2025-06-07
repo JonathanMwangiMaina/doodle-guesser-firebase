@@ -122,7 +122,7 @@ export default function DoodleGuesserPage() {
       </AlertDialog>
       
       <footer className="mt-12 text-center text-sm text-muted-foreground">
-        <p>Built with fun and AI ✨</p>
+        <p>Developed by Johnsberg. Built with fun and AI ✨</p>
       </footer>
     </div>
   );
