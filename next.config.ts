@@ -18,6 +18,10 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  // Allow development access from Modal tunnel domains
+  allowedDevOrigins: [
+    /^https:\/\/.*\.modal\.host$/,
+  ],
 };
 
 export default nextConfig;

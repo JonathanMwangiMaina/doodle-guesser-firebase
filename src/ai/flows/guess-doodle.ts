@@ -6,8 +6,7 @@
 
 'use server';
 
-import {ai} from '@/ai/genkit';
-import {z} from 'genkit';
+import { z } from 'zod';
 
 const GuessDoodleInputSchema = z.object({
   photoDataUri: z
@@ -24,31 +23,70 @@ const GuessDoodleOutputSchema = z.object({
 export type GuessDoodleOutput = z.infer<typeof GuessDoodleOutputSchema>;
 
 export async function guessDoodle(input: GuessDoodleInput): Promise<GuessDoodleOutput> {
-  return guessDoodleFlow(input);
-}
+  const { photoDataUri } = GuessDoodleInputSchema.parse(input);
 
-const prompt = ai.definePrompt({
-  name: 'guessDoodlePrompt',
-  input: {schema: GuessDoodleInputSchema},
-  output: {schema: GuessDoodleOutputSchema},
-  prompt: `You are an AI model that is good at guessing doodles.
+  try {
+    const prompt = `You are an AI model that is good at guessing doodles.
 
-  A user has drawn a doodle, and you need to guess what the doodle is. Be as accurate as possible.
+A user has drawn a doodle, and you need to guess what the doodle is. Be as accurate as possible.
 
-  Here is the doodle:
-  {{media url=photoDataUri}}
+What is your guess? Respond with just the object name or a short phrase, nothing else.`;
 
-  What is your guess?`,
-});
+    // Call Subscribe.dev API
+    // Using Claude 4.5 Sonnet for excellent vision capabilities
+    const apiKey = process.env.SUBSCRIBE_DEV_API_KEY;
 
-const guessDoodleFlow = ai.defineFlow(
-  {
-    name: 'guessDoodleFlow',
-    inputSchema: GuessDoodleInputSchema,
-    outputSchema: GuessDoodleOutputSchema,
-  },
-  async input => {
-    const {output} = await prompt(input);
-    return output!;
+    if (!apiKey) {
+      throw new Error('SUBSCRIBE_DEV_API_KEY environment variable is not set. Please add it to your .env.local file.');
+    }
+
+    const response = await fetch('https://api.subscribe.dev/v1/run_image_ai', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: 'anthropic/claude-4.5-sonnet',
+        input: {
+          prompt: prompt,
+          input_image: photoDataUri,
+        },
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Subscribe.dev API error:', response.status, errorText);
+      throw new Error(`API request failed with status ${response.status}: ${errorText}`);
+    }
+
+    const result = await response.json();
+    console.log('API Response:', JSON.stringify(result, null, 2));
+
+    // Extract guess from the response
+    let guess = 'Unknown';
+
+    if (result.output && Array.isArray(result.output) && result.output.length > 0) {
+      guess = result.output[0].trim();
+    } else if (typeof result.output === 'string') {
+      guess = result.output.trim();
+    } else if (result.text) {
+      guess = result.text.trim();
+    } else if (result.content) {
+      guess = result.content.trim();
+    } else if (result.message && typeof result.message === 'string') {
+      guess = result.message.trim();
+    }
+
+    return {
+      guess: guess || 'Unknown'
+    };
+  } catch (error) {
+    console.error('Error guessing doodle:', error);
+    if (error instanceof Error) {
+      throw new Error(`Failed to get AI guess: ${error.message}`);
+    }
+    throw new Error('Failed to get AI guess. Please try again.');
   }
-);
+}
