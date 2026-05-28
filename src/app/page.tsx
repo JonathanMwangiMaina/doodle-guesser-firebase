@@ -13,14 +13,14 @@ import {
 } from '@/components/ui/alert-dialog';
 import Canvas, { type CanvasRef } from '@/components/canvas';
 import { Eraser, Brain, Loader2 } from 'lucide-react';
-import { guessDoodle } from '@/ai/flows/guess-doodle'; // Assuming this path is correct
+import { guessDoodle } from '@/ai/flows/guess-doodle';
 
 export default function DoodleGuesserPage() {
   const canvasRef = useRef<CanvasRef>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [aiGuess, setAiGuess] = useState<string | null>(null);
+  const [aiGuess, setAiGuess] = useState<string>('');
   const [showGuessAlert, setShowGuessAlert] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string>('');
 
   const handleClearCanvas = () => {
     canvasRef.current?.clear();
@@ -30,25 +30,52 @@ export default function DoodleGuesserPage() {
     if (!canvasRef.current) return;
 
     const imageDataUrl = canvasRef.current.getImageDataUrl('image/png');
-    if (!imageDataUrl) {
-      setError('Could not get image data from canvas.');
+
+    // Validate canvas has content
+    if (!imageDataUrl || imageDataUrl === 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==') {
+      setError('Please draw something first!');
       setShowGuessAlert(true);
       return;
     }
 
     setIsLoading(true);
-    setError(null);
-    setAiGuess(null);
+    setError('');
+    setAiGuess('');
+    setShowGuessAlert(true);
 
     try {
       const result = await guessDoodle({ photoDataUri: imageDataUrl });
-      setAiGuess(result.guess);
-    } catch (e) {
+
+      // Check if result is an error
+      if ('error' in result) {
+        console.error('AI Error:', result);
+
+        // Display user-friendly error based on error code
+        switch (result.code) {
+          case 'CONFIG_ERROR':
+            setError('⚠️ The AI service needs to be configured. Please check the deployment settings.');
+            break;
+          case 'AUTH_ERROR':
+            setError('🔑 Authentication failed. Please verify the API credentials.');
+            break;
+          case 'QUOTA_ERROR':
+            setError('⏳ Service quota exceeded. Please try again in a few moments.');
+            break;
+          case 'INVALID_INPUT':
+            setError('❌ Invalid drawing data. Please try drawing again.');
+            break;
+          default:
+            setError(`❌ ${result.error}. Please try again.`);
+        }
+      } else {
+        // Success!
+        setAiGuess(result.guess);
+      }
+    } catch (e: any) {
       console.error('Error guessing doodle:', e);
-      setError('Failed to get a guess from the AI. Please try again.');
+      setError('❌ An unexpected error occurred. Please try again or check your connection.');
     } finally {
       setIsLoading(false);
-      setShowGuessAlert(true);
     }
   };
 
@@ -105,22 +132,54 @@ export default function DoodleGuesserPage() {
             <AlertDialogTitle className="font-headline text-2xl text-primary">
               {error ? 'Oops!' : "AI's Guess"}
             </AlertDialogTitle>
-            <AlertDialogDescription className="text-base text-foreground pt-2">
-              {error ? error : (aiGuess ? `The AI thinks you drew: "${aiGuess}"` : "The AI is thinking...")}
+            <AlertDialogDescription className="text-center">
+              {error ? (
+                <div className="space-y-3">
+                  <p className="text-red-600 dark:text-red-400">{error}</p>
+                  <Button
+                    onClick={() => {
+                      setShowGuessAlert(false);
+                      setError('');
+                    }}
+                    variant="outline"
+                    className="w-full"
+                  >
+                    Try Again
+                  </Button>
+                </div>
+              ) : aiGuess ? (
+                <div className="space-y-3">
+                  <p className="text-2xl font-bold text-green-600 dark:text-green-400">
+                    🎨 "{aiGuess}"
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    That's what the AI thinks you drew!
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <div className="flex justify-center">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                  </div>
+                  <p>The AI is analyzing your doodle...</p>
+                </div>
+              )}
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter className="mt-4">
-            <AlertDialogAction 
-              onClick={() => setShowGuessAlert(false)} 
-              className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-md py-2 px-4 text-sm"
-              aria-label="Close alert dialog"
-            >
-              OK
-            </AlertDialogAction>
-          </AlertDialogFooter>
+          {!error && aiGuess && (
+            <AlertDialogFooter className="mt-4">
+              <AlertDialogAction
+                onClick={() => setShowGuessAlert(false)}
+                className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-md py-2 px-4 text-sm"
+                aria-label="Close alert dialog"
+              >
+                OK
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          )}
         </AlertDialogContent>
       </AlertDialog>
-      
+
       <footer className="mt-12 text-center text-sm text-muted-foreground">
         <p>Developed by Johnsberg. Built with fun and AI ✨</p>
       </footer>
