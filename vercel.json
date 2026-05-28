@@ -2,8 +2,5 @@
   "buildCommand": "next build",
   "devCommand": "next dev",
   "installCommand": "npm install",
-  "framework": "nextjs",
-  "env": {
-    "GOOGLE_GENAI_API_KEY": "@google_genai_api_key"
-  }
+  "framework": "nextjs"
 }
