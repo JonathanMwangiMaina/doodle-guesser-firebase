@@ -1,6 +1,6 @@
 # 🎨 Doodle Guesser
 
-An AI-powered web application that uses Google's Gemini 2.0 Flash model to guess what you're drawing in real-time. Built with Next.js, TypeScript, and Google's Generative AI SDK.
+An AI-powered web application that uses Google's Gemini 2.0 Flash model to guess what you're drawing in real-time. Built with Next.js and TypeScript using direct REST API calls.
 
 ## Features
 
@@ -14,11 +14,13 @@ An AI-powered web application that uses Google's Gemini 2.0 Flash model to guess
 ## Tech Stack
 
 - **Frontend**: Next.js 15, React, TypeScript
-- **AI Integration**: Google Generative AI SDK (@google/generative-ai)
+- **AI Integration**: Direct REST API calls to Google Gemini API
 - **AI Model**: Gemini 2.0 Flash Experimental
+- **API Endpoint**: `/api/guess` for doodle recognition
 - **Styling**: Tailwind CSS, shadcn/ui
 - **Deployment**: Vercel
 - **Icons**: Lucide React
+- **Dependencies**: Zero AI-related packages (pure REST API)
 
 ## Getting Started
 
