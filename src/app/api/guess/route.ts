@@ -4,19 +4,9 @@ export async function POST(req: Request) {
   try {
     const { photoDataUri } = await req.json();
 
-    // Validate API key
-    const API_KEY = process.env.GOOGLE_GENAI_API_KEY || process.env.GOOGLE_API_KEY;
-
-    if (!API_KEY) {
-      return NextResponse.json(
-        {
-          error: 'AI service is not configured properly',
-          code: 'CONFIG_ERROR',
-          details: 'Please contact the administrator to configure the API key',
-        },
-        { status: 500 }
-      );
-    }
+    // Hugging Face API doesn't require an API key for public models
+    // But you can optionally use one for higher rate limits
+    const HF_API_KEY = process.env.HUGGINGFACE_API_KEY || '';
 
     // Validate input
     if (!photoDataUri || !photoDataUri.startsWith('data:image/')) {
@@ -30,7 +20,7 @@ export async function POST(req: Request) {
       );
     }
 
-    // Extract base64 data and mime type from data URI
+    // Extract base64 data from data URI
     const matches = photoDataUri.match(/^data:([^;]+);base64,(.+)$/);
     if (!matches) {
       return NextResponse.json(
@@ -43,47 +33,36 @@ export async function POST(req: Request) {
       );
     }
 
-    const [, mimeType, base64Data] = matches;
+    const [, , base64Data] = matches;
 
-    // Create the prompt for Gemini
-    const prompt = `You are an expert AI at identifying hand-drawn doodles and sketches.
+    // Convert base64 to blob for Hugging Face API
+    const imageBuffer = Buffer.from(base64Data, 'base64');
 
-A user has drawn a doodle, and you need to guess what it represents.
-Be creative but reasonable with your guess. Consider common objects, animals, symbols, and concepts.
+    // Use Salesforce BLIP image captioning model (free, no API key required)
+    // Alternative models:
+    // - nlpconnect/vit-gpt2-image-captioning
+    // - microsoft/git-large-textcaps
+    const modelUrl = 'https://api-inference.huggingface.co/models/Salesforce/blip-image-captioning-large';
 
-Analyze the doodle image provided and give your best guess of what this doodle represents.
-Be specific and confident. If you're unsure, provide your most likely guess based on the shapes and patterns you see.
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
 
-Respond with ONLY the name of what you think the doodle is (e.g., "cat", "house", "tree", "smiley face").
-Do not include explanations or additional text.`;
+    // Add API key if available (optional, for higher rate limits)
+    if (HF_API_KEY) {
+      headers['Authorization'] = `Bearer ${HF_API_KEY}`;
+    }
 
-    // Call Gemini API with image
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${API_KEY}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [
-            {
-              parts: [
-                { text: prompt },
-                {
-                  inline_data: {
-                    mime_type: mimeType,
-                    data: base64Data,
-                  },
-                },
-              ],
-            },
-          ],
-        }),
-      }
-    );
+    // Call Hugging Face Inference API
+    const response = await fetch(modelUrl, {
+      method: 'POST',
+      headers,
+      body: imageBuffer,
+    });
 
     if (!response.ok) {
-      const errorData = await response.json();
-      console.error('Gemini API error:', errorData);
+      const errorData = await response.text();
+      console.error('Hugging Face API error:', errorData);
 
       // Handle specific error cases
       if (response.status === 401 || response.status === 403) {
@@ -91,7 +70,7 @@ Do not include explanations or additional text.`;
           {
             error: 'API authentication failed',
             code: 'AUTH_ERROR',
-            details: 'Invalid or expired API key',
+            details: 'Invalid or missing API key',
           },
           { status: 401 }
         );
@@ -102,9 +81,20 @@ Do not include explanations or additional text.`;
           {
             error: 'AI service quota exceeded',
             code: 'QUOTA_ERROR',
-            details: 'Please try again later',
+            details: 'Too many requests. Please try again in a few moments.',
           },
           { status: 429 }
+        );
+      }
+
+      if (response.status === 503) {
+        return NextResponse.json(
+          {
+            error: 'AI model is loading',
+            code: 'MODEL_LOADING',
+            details: 'The AI model is warming up. Please try again in a few seconds.',
+          },
+          { status: 503 }
         );
       }
 
@@ -112,7 +102,7 @@ Do not include explanations or additional text.`;
         {
           error: 'Failed to process the doodle',
           code: 'UNKNOWN_ERROR',
-          details: errorData.error?.message || 'Unknown error occurred',
+          details: errorData || 'Unknown error occurred',
         },
         { status: response.status }
       );
@@ -120,10 +110,20 @@ Do not include explanations or additional text.`;
 
     const data = await response.json();
 
-    // Extract the guess from the response
-    const guess = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+    // Hugging Face BLIP returns an array of predictions
+    // Format: [{ generated_text: "a drawing of a cat" }]
+    let guess = '';
 
-    if (!guess) {
+    if (Array.isArray(data) && data.length > 0 && data[0].generated_text) {
+      guess = data[0].generated_text.trim();
+
+      // Clean up the response to make it more concise
+      // BLIP often returns "a photo of..." or "a drawing of..."
+      guess = guess
+        .replace(/^(a|an|the)\s+(photo|picture|image|drawing|sketch|doodle)\s+of\s+/i, '')
+        .replace(/^(a|an|the)\s+/i, '')
+        .trim();
+    } else {
       return NextResponse.json(
         {
           error: 'No response from AI',
