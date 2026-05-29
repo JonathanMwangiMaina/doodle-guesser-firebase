@@ -2,11 +2,5 @@
   "buildCommand": "next build",
   "devCommand": "next dev",
   "installCommand": "npm install",
-  "framework": "nextjs",
-  "env": {
-    "GOOGLE_GENAI_API_KEY": {
-      "description": "API key for Google Gemini 2.0 Flash model. Get free key from https://aistudio.google.com/apikey",
-      "required": true
-    }
-  }
+  "framework": "nextjs"
 }
