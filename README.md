@@ -1,11 +1,11 @@
 # 🎨 Doodle Guesser
 
-An AI-powered web application that uses Google's Gemini 2.0 Flash model to guess what you're drawing in real-time. Built with Next.js and TypeScript using direct REST API calls.
+An AI-powered web application that uses Hugging Face's BLIP image captioning model to guess what you're drawing in real-time. Built with Next.js and TypeScript - **no API key required!**
 
 ## Features
 
 - **Real-time Drawing Canvas**: Interactive HTML5 canvas for creating doodles
-- **AI-Powered Recognition**: Uses Google's Gemini 2.0 Flash model for accurate guessing
+- **AI-Powered Recognition**: Uses Hugging Face's BLIP image captioning model for accurate guessing
 - **Professional Error Handling**: Comprehensive error messages with specific error codes
 - **Responsive Design**: Works seamlessly on desktop and mobile devices
 - **Health Check API**: Monitor application configuration status
@@ -14,8 +14,8 @@ An AI-powered web application that uses Google's Gemini 2.0 Flash model to guess
 ## Tech Stack
 
 - **Frontend**: Next.js 15, React, TypeScript
-- **AI Integration**: Direct REST API calls to Google Gemini API
-- **AI Model**: Gemini 2.0 Flash Experimental
+- **AI Integration**: Direct REST API calls to Hugging Face Inference API
+- **AI Model**: Salesforce BLIP Image Captioning Large
 - **API Endpoint**: `/api/guess` for doodle recognition
 - **Styling**: Tailwind CSS, shadcn/ui
 - **Deployment**: Vercel
@@ -27,7 +27,7 @@ An AI-powered web application that uses Google's Gemini 2.0 Flash model to guess
 ### Prerequisites
 
 - Node.js 18+ and npm
-- A Google AI API key ([Get one here](https://aistudio.google.com/apikey))
+- **No API key required!** (Optional: Hugging Face token for higher rate limits)
 
 ### Local Development
 
@@ -42,13 +42,13 @@ An AI-powered web application that uses Google's Gemini 2.0 Flash model to guess
    npm install
    ```
 
-3. **Set up environment variables**
+3. **Set up environment variables (OPTIONAL)**
    ```bash
    cp .env.local.example .env.local
    ```
-   Then edit `.env.local` and add your Google AI API key:
+   The app works without any API key! Optionally add a Hugging Face token for higher rate limits:
    ```
-   GOOGLE_GENAI_API_KEY=your_actual_api_key_here
+   HUGGINGFACE_API_KEY=your_hf_token_here
    ```
 
 4. **Run the development server**
@@ -61,11 +61,9 @@ An AI-powered web application that uses Google's Gemini 2.0 Flash model to guess
 
 ## Deployment to Vercel
 
-### ⚠️ Important: AI Configuration Required
+### ✅ Works Out of the Box!
 
-**The AI doodle guessing will NOT work in production without proper environment variable configuration.**
-
-For complete step-by-step deployment instructions including AI setup, see **[GOOGLE_AI_SETUP.md](./GOOGLE_AI_SETUP.md)**.
+**The AI doodle guessing works immediately after deployment - no API key configuration needed!**
 
 ### Quick Deployment Steps
 
@@ -74,16 +72,14 @@ For complete step-by-step deployment instructions including AI setup, see **[GOO
    vercel
    ```
 
-2. **Add Google AI Environment Variable** (Required!)
+2. **Optional: Add Hugging Face Token for Higher Rate Limits**
    - Go to Vercel Dashboard → Project Settings → Environment Variables
-   - Add `GOOGLE_GENAI_API_KEY` with your API key from [Google AI Studio](https://aistudio.google.com/apikey)
+   - Add `HUGGINGFACE_API_KEY` with your token from [Hugging Face](https://huggingface.co/settings/tokens)
    - Select all environments (Production, Preview, Development)
-   - See [GOOGLE_AI_SETUP.md](./GOOGLE_AI_SETUP.md) for detailed instructions
+   - This is **optional** - the app works without it!
 
-3. **Redeploy**
-   ```bash
-   vercel --prod
-   ```
+3. **Done!**
+   Your app is live and fully functional. No redeploy needed unless you added the optional API key.
 
 ## API Endpoints
 
@@ -106,19 +102,19 @@ For complete step-by-step deployment instructions including AI setup, see **[GOO
 doodle-guesser-firebase/
 ├── src/
 │   ├── app/
-│   │   ├── api/health/          # Health check endpoint
+│   │   ├── api/
+│   │   │   ├── guess/           # Hugging Face AI endpoint
+│   │   │   └── health/          # Health check endpoint
 │   │   └── page.tsx             # Main drawing interface
 │   ├── ai/
-│   │   ├── genkit.ts            # Genkit configuration
 │   │   └── flows/
-│   │       └── guess-doodle.ts  # AI flow for doodle guessing
+│   │       └── guess-doodle.ts  # Server action for doodle guessing
 │   ├── components/
 │   │   ├── canvas.tsx           # Drawing canvas component
 │   │   └── ui/                  # shadcn/ui components
 │   └── lib/
 │       └── config.ts            # Centralized configuration
 ├── .env.local.example           # Environment template
-├── GOOGLE_AI_SETUP.md           # Complete AI configuration guide
 ├── vercel.json                  # Vercel deployment config
 └── README.md                    # This file
 ```
@@ -127,21 +123,23 @@ doodle-guesser-firebase/
 
 The application includes comprehensive error handling with specific error codes:
 
-- **CONFIG_ERROR**: API key not configured
-- **AUTH_ERROR**: Invalid or expired API key
+- **MODEL_LOADING**: Hugging Face model is warming up (first request only)
+- **AUTH_ERROR**: Invalid or expired API key (only if using optional token)
 - **QUOTA_ERROR**: API quota exceeded
 - **INVALID_INPUT**: Invalid drawing data
 - **UNKNOWN_ERROR**: Unexpected errors
 
 ### Troubleshooting
 
-If you see "The AI service needs to be configured":
-1. Ensure `GOOGLE_GENAI_API_KEY` is set in Vercel Environment Variables
-2. Verify it's set for all environments (Production, Preview, Development)
-3. Redeploy the application
-4. Check build logs for: `✅ Genkit initialized successfully with Google AI`
+If you see "AI model is loading":
+- This is normal on first request - the model needs a few seconds to warm up
+- Simply try again after 5-10 seconds
+- Subsequent requests will be fast
 
-See [GOOGLE_AI_SETUP.md](./GOOGLE_AI_SETUP.md#troubleshooting) for more troubleshooting steps.
+If you see quota errors:
+- The free Hugging Face API has rate limits
+- Add a free Hugging Face token to `.env.local` for higher limits
+- Get one at [https://huggingface.co/settings/tokens](https://huggingface.co/settings/tokens)
 
 ## Security Best Practices
 
@@ -152,23 +150,30 @@ See [GOOGLE_AI_SETUP.md](./GOOGLE_AI_SETUP.md#troubleshooting) for more troubles
 
 ## Free Tier Limits
 
-Google AI Studio free tier:
-- 60 requests per minute
-- No credit card required
-- Perfect for testing and personal projects
+Hugging Face Inference API (without token):
+- Works without any account or API key
+- Reasonable rate limits for personal projects
+- Model may have cold start on first request
 
-For production use, consider upgrading to [Google Cloud Vertex AI](https://cloud.google.com/vertex-ai).
+With free Hugging Face token:
+- 1000+ requests per day
+- Faster model loading
+- No credit card required
+- Perfect for testing and portfolio projects
 
 ## Development
 
-### Environment Validation
+### Testing the AI
 
-The app includes automatic environment validation on startup. If the `GOOGLE_GENAI_API_KEY` is missing, you'll see helpful error messages with setup instructions.
+The app works immediately without any configuration:
+1. Run `npm run dev`
+2. Draw something simple (e.g., a cat, house, or sun)
+3. Click "Guess Doodle!" and see the AI's prediction
 
 ### Testing Error States
 
 To test error handling:
-1. Remove or invalidate your API key
+1. Temporarily modify the API endpoint URL to an invalid one
 2. Draw something and click "Guess Doodle!"
 3. Observe the user-friendly error message
 
@@ -186,7 +191,7 @@ Developed by **Johnsberg** - Built with fun and AI ✨
 
 ## Acknowledgments
 
-- Google Gemini AI for powerful image recognition
-- Firebase Genkit for seamless AI integration
+- Hugging Face for free AI model hosting
+- Salesforce for the BLIP image captioning model
 - Vercel for hosting and deployment
 - shadcn/ui for beautiful components
