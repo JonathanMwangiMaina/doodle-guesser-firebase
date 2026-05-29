@@ -1,8 +1,7 @@
-import {genkit} from 'genkit';
-import {googleAI} from '@genkit-ai/googleai';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 
 // Validate API key exists
-const apiKey = process.env.GOOGLE_GENAI_API_KEY;
+const apiKey = process.env.GOOGLE_GENAI_API_KEY || process.env.GOOGLE_API_KEY;
 
 if (!apiKey) {
   console.error('❌ GOOGLE_GENAI_API_KEY is not configured.');
@@ -14,17 +13,16 @@ if (!apiKey) {
   throw new Error(
     'Missing GOOGLE_GENAI_API_KEY environment variable. ' +
     'Please configure it in your environment. ' +
-    'See VERCEL_SETUP.md for deployment instructions.'
+    'See GOOGLE_AI_SETUP.md for deployment instructions.'
   );
 }
 
-export const ai = genkit({
-  plugins: [
-    googleAI({
-      apiKey,
-    }),
-  ],
-  model: 'googleai/gemini-2.0-flash',
+// Initialize the Google Generative AI SDK
+const genAI = new GoogleGenerativeAI(apiKey);
+
+// Get the Gemini 2.0 Flash model
+export const model = genAI.getGenerativeModel({
+  model: 'gemini-2.0-flash-exp',
 });
 
-console.log('✅ Genkit initialized successfully with Google AI');
+console.log('✅ Google AI initialized successfully with Gemini 2.0 Flash');
