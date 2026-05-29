@@ -30,7 +30,7 @@ An AI-powered web application that uses Google's Gemini 2.0 Flash model to guess
 
 1. **Clone the repository**
    ```bash
-   git clone <your-repo-url>
+   git clone https://github.com/JonathanMwangiMaina/doodle-guesser-firebase.git
    cd doodle-guesser-firebase
    ```
 
@@ -58,7 +58,11 @@ An AI-powered web application that uses Google's Gemini 2.0 Flash model to guess
 
 ## Deployment to Vercel
 
-For detailed deployment instructions, see [VERCEL_SETUP.md](./VERCEL_SETUP.md).
+### ⚠️ Important: AI Configuration Required
+
+**The AI doodle guessing will NOT work in production without proper environment variable configuration.**
+
+For complete step-by-step deployment instructions including AI setup, see **[GOOGLE_AI_SETUP.md](./GOOGLE_AI_SETUP.md)**.
 
 ### Quick Deployment Steps
 
@@ -67,10 +71,11 @@ For detailed deployment instructions, see [VERCEL_SETUP.md](./VERCEL_SETUP.md).
    vercel
    ```
 
-2. **Add Environment Variable**
+2. **Add Google AI Environment Variable** (Required!)
    - Go to Vercel Dashboard → Project Settings → Environment Variables
-   - Add `GOOGLE_GENAI_API_KEY` with your API key
+   - Add `GOOGLE_GENAI_API_KEY` with your API key from [Google AI Studio](https://aistudio.google.com/apikey)
    - Select all environments (Production, Preview, Development)
+   - See [GOOGLE_AI_SETUP.md](./GOOGLE_AI_SETUP.md) for detailed instructions
 
 3. **Redeploy**
    ```bash
@@ -110,7 +115,8 @@ doodle-guesser-firebase/
 │   └── lib/
 │       └── config.ts            # Centralized configuration
 ├── .env.local.example           # Environment template
-├── VERCEL_SETUP.md             # Deployment guide
+├── GOOGLE_AI_SETUP.md           # Complete AI configuration guide
+├── vercel.json                  # Vercel deployment config
 └── README.md                    # This file
 ```
 
@@ -124,12 +130,31 @@ The application includes comprehensive error handling with specific error codes:
 - **INVALID_INPUT**: Invalid drawing data
 - **UNKNOWN_ERROR**: Unexpected errors
 
+### Troubleshooting
+
+If you see "The AI service needs to be configured":
+1. Ensure `GOOGLE_GENAI_API_KEY` is set in Vercel Environment Variables
+2. Verify it's set for all environments (Production, Preview, Development)
+3. Redeploy the application
+4. Check build logs for: `✅ Genkit initialized successfully with Google AI`
+
+See [GOOGLE_AI_SETUP.md](./GOOGLE_AI_SETUP.md#troubleshooting) for more troubleshooting steps.
+
 ## Security Best Practices
 
 - Environment variables are never committed to version control
 - API keys are stored securely in Vercel environment variables
 - Client-side code never exposes sensitive credentials
 - `.env.local` is gitignored by default
+
+## Free Tier Limits
+
+Google AI Studio free tier:
+- 60 requests per minute
+- No credit card required
+- Perfect for testing and personal projects
+
+For production use, consider upgrading to [Google Cloud Vertex AI](https://cloud.google.com/vertex-ai).
 
 ## Development
 
@@ -143,13 +168,6 @@ To test error handling:
 1. Remove or invalidate your API key
 2. Draw something and click "Guess Doodle!"
 3. Observe the user-friendly error message
-
-## Free Tier Limits
-
-Google AI Studio free tier:
-- 15 requests per minute
-- 1,500 requests per day
-- 1 million tokens per month
 
 ## Contributing
 
