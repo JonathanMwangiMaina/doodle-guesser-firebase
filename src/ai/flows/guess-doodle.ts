@@ -1,9 +1,7 @@
-// This is an AI-powered doodle guesser using Google's Generative AI SDK.
+// This is an AI-powered doodle guesser that calls the /api/guess endpoint
 // It takes a data URI of a doodle and returns the AI's guess.
 
 'use server';
-
-import { model } from '@/ai/gemini';
 
 export interface GuessDoodleInput {
   photoDataUri: string;
@@ -33,84 +31,34 @@ export async function guessDoodle(
       };
     }
 
-    // Extract the base64 data and mime type from the data URI
-    const matches = input.photoDataUri.match(/^data:([^;]+);base64,(.+)$/);
-    if (!matches) {
+    // Call the API route
+    const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/guess`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        photoDataUri: input.photoDataUri,
+      }),
+    });
+
+    const data = await response.json();
+
+    // Check if the response contains an error
+    if (!response.ok || data.error) {
       return {
-        error: 'Invalid data URI format',
-        code: 'INVALID_INPUT',
-        details: 'Could not parse the image data URI',
+        error: data.error || 'Failed to process the doodle',
+        code: data.code || 'UNKNOWN_ERROR',
+        details: data.details,
       };
     }
 
-    const [, mimeType, base64Data] = matches;
-
-    // Create the prompt for Gemini
-    const prompt = `You are an expert AI at identifying hand-drawn doodles and sketches.
-
-A user has drawn a doodle, and you need to guess what it represents.
-Be creative but reasonable with your guess. Consider common objects, animals, symbols, and concepts.
-
-Analyze the doodle image provided and give your best guess of what this doodle represents.
-Be specific and confident. If you're unsure, provide your most likely guess based on the shapes and patterns you see.
-
-Respond with ONLY the name of what you think the doodle is (e.g., "cat", "house", "tree", "smiley face").
-Do not include explanations or additional text.`;
-
-    // Generate content with the image
-    const result = await model.generateContent([
-      prompt,
-      {
-        inlineData: {
-          mimeType,
-          data: base64Data,
-        },
-      },
-    ]);
-
-    const response = result.response;
-    const guess = response.text().trim();
-
     return {
-      guess,
+      guess: data.guess,
     };
   } catch (error: any) {
     console.error('Error in guessDoodle:', error);
 
-    // Check for specific error types
-    if (error.message?.includes('GOOGLE_GENAI_API_KEY') || error.message?.includes('GOOGLE_API_KEY')) {
-      return {
-        error: 'AI service is not configured properly',
-        code: 'CONFIG_ERROR',
-        details: 'Please contact the administrator to configure the API key',
-      };
-    }
-
-    if (error.message?.includes('API key') || error.message?.includes('invalid key')) {
-      return {
-        error: 'API authentication failed',
-        code: 'AUTH_ERROR',
-        details: 'Invalid or expired API key',
-      };
-    }
-
-    if (error.message?.includes('quota') || error.message?.includes('limit') || error.message?.includes('429')) {
-      return {
-        error: 'AI service quota exceeded',
-        code: 'QUOTA_ERROR',
-        details: 'Please try again later',
-      };
-    }
-
-    if (error.message?.includes('safety') || error.message?.includes('blocked')) {
-      return {
-        error: 'Content was blocked by safety filters',
-        code: 'SAFETY_ERROR',
-        details: 'The image may have triggered content safety filters',
-      };
-    }
-
-    // Generic error
     return {
       error: 'Failed to process the doodle',
       code: 'UNKNOWN_ERROR',
